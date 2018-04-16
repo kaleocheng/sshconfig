@@ -3,8 +3,11 @@ package sshconfig
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 // SSHHost defines a single host entry in a ssh config
@@ -29,6 +32,9 @@ func MustParseSSHConfig(path string) []*SSHHost {
 
 // ParseSSHConfig parses a SSH config given by path.
 func ParseSSHConfig(path string) ([]*SSHHost, error) {
+	if path == "" {
+		path = defaultConfigFile()
+	}
 	// read config file
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -36,6 +42,11 @@ func ParseSSHConfig(path string) ([]*SSHHost, error) {
 	}
 
 	return parse(string(content))
+}
+
+func defaultConfigFile() string {
+	homePath, _ := homedir.Dir()
+	return filepath.Join(homePath, ".ssh", "config")
 }
 
 // parses an openssh config file
