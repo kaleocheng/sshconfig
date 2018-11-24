@@ -22,7 +22,7 @@ type SSHHost struct {
 }
 
 // MustParseSSHConfig must parse the SSH config given by path or it will panic
-func MustParseSSHConfig(path string) []*SSHHost {
+func MustParseSSHConfig(path []string) []*SSHHost {
 	config, err := ParseSSHConfig(path)
 	if err != nil {
 		panic(err)
@@ -31,22 +31,43 @@ func MustParseSSHConfig(path string) []*SSHHost {
 }
 
 // ParseSSHConfig parses a SSH config given by path.
-func ParseSSHConfig(path string) ([]*SSHHost, error) {
-	if path == "" {
+func ParseSSHConfig(path []string) (configs []*SSHHost, err error) {
+	if len(path) <= 0 {
 		path = defaultConfigFile()
 	}
+
 	// read config file
-	content, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
+	for _, v := range path {
+		content, err := ioutil.ReadFile(v)
+		if err != nil {
+			return nil, err
+		}
+		config, err := parse(string(content))
+		if err != nil {
+			return nil, err
+		}
+		configs = append(configs, config...)
 	}
 
-	return parse(string(content))
+	return configs, nil
 }
 
-func defaultConfigFile() string {
+func defaultConfigFile() []string {
 	homePath, _ := homedir.Dir()
-	return filepath.Join(homePath, ".ssh", "config")
+	files, err := ioutil.ReadDir(filepath.Join(homePath, ".ssh", "config.d"))
+	if err != nil {
+		fmt.Errorf(err.Error())
+		return nil
+	}
+
+	filePaths := []string{}
+	for _, f := range files {
+		//filePaths.append(filepath.Join(homePath, ".ssh", "config"))
+		fp := filepath.Join(homePath, ".ssh", "config.d", f.Name())
+		filePaths = append(filePaths, fp)
+	}
+	filePaths = append(filePaths, filepath.Join(homePath, ".ssh", "config"))
+	return filePaths
 }
 
 // parses an openssh config file
